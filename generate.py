@@ -57,7 +57,7 @@ MSGS = {
     "FPRATE": (12, 14),
 }
 
-DOMAIN = dict(lat1=40, lat2=70, lon1=-85.5, lon2=-38.5)
+DOMAIN = dict(lat1=40, lat2=56, lon1=-72, lon2=-48)
 MIN_Q3 = 0.1  # mask points where Q3 <= this (raise it to hide noisy near-zero amounts)
 
 CITIES = {
@@ -161,8 +161,11 @@ def plot_frame(q1, q3, lats, lons, label: str, run: str, fff: int, out: Path) ->
     valid = init + dt.timedelta(hours=fff)
     qcd = compute_qcd(q1, q3)
 
-    fig = plt.figure(figsize=(32, 18), dpi=60)
-    ax = fig.add_axes([0.02, 0.03, 0.88, 0.82], projection=ccrs.PlateCarree())
+    # after: figure shape follows the domain, so the map fills the axes box
+    AX_W, AX_H = 0.88, 0.82        # keep in sync with add_axes below
+    aspect = (lons.max() - lons.min()) / (lats.max() - lats.min())
+    fig = plt.figure(figsize=(18 * aspect * AX_H / AX_W, 18), dpi=60)
+    ax = fig.add_axes([0.02, 0.03, AX_W, AX_H], projection=ccrs.PlateCarree())
     ax.set_extent([lons.min(), lons.max(), lats.min(), lats.max()])
 
     def ne(cat, name, **kw):
@@ -184,10 +187,10 @@ def plot_frame(q1, q3, lats, lons, label: str, run: str, fff: int, out: Path) ->
     cbar.set_label(f"QCD 12h {label} Accumulation", fontsize=20, labelpad=30)
 
     # --- 2. ADD AGREEMENT & DISAGREEMENT LABELS ---
-    cbar.ax.text(1.8, 0.0, "High Agreement\n(Low Spread)", transform=cbar.ax.transAxes, 
-                 fontsize=18, va="center", ha="left", fontweight="semibold")
-    cbar.ax.text(1.8, 1.0, "High Disagreement\n(High Spread)", transform=cbar.ax.transAxes, 
-                 fontsize=18, va="center", ha="left", fontweight="semibold")
+    cbar.ax.text(0.5, -0.02, "High Agreement\n(Low Spread)", transform=cbar.ax.transAxes, 
+                 fontsize=18, va="center", ha="left", fontweight="bold")
+    cbar.ax.text(0.5, 1.02, "High Disagreement\n(High Spread)", transform=cbar.ax.transAxes, 
+                 fontsize=18, va="center", ha="left", fontweight="bold")
 
     for name, (lon, lat) in CITIES.items():
         ax.text(lon, lat, name, color="k", fontsize=22, ha="center", va="center",
