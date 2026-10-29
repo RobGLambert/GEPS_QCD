@@ -45,12 +45,17 @@ PRODUCTS = {  # datamart variable code -> display label
     "SPRATE": "Snowfall",
     "RPRATE": "Rainfall",
     "IPRATE": "Ice Pellet",
-    "FRATE": "Freezing Rain",
+    "FPRATE": "Freezing Rain",
 }
 
-# 1-based GRIB message numbers inside the *_all-products.grib2 files
-MSG_Q1 = 13  # 25th percentile
-MSG_Q3 = 15  # 75th percentile (14 = median)
+# 1-based GRIB message numbers (25th, 75th percentile) inside each *_all-products.grib2.
+# The median sits between them. Verify with: python generate.py --inspect FILE.grib2
+MSGS = {
+    "SPRATE": (13, 15),
+    "RPRATE": (15, 17),
+    "IPRATE": (12, 14),
+    "FPRATE": (12, 14),
+}
 
 DOMAIN = dict(lat1=40, lat2=70, lon1=-85.5, lon2=-38.5)
 MIN_Q3 = 0.0  # mask points where Q3 <= this (raise it to hide noisy near-zero amounts)
@@ -134,13 +139,14 @@ def compute_qcd(q1: np.ndarray, q3: np.ndarray) -> np.ma.MaskedArray:
     return np.ma.masked_where(np.ma.getmaskarray(qcd) | (qcd > 1) | (np.asarray(q3) <= MIN_Q3), qcd)
 
 
-def read_quartiles(path: Path):
+def read_quartiles(path: Path, var: str):
     import pygrib
 
+    m1, m3 = MSGS[var]
     grbs = pygrib.open(str(path))
     try:
-        q1, lats, lons = grbs.message(MSG_Q1).data(**DOMAIN)
-        q3, _, _ = grbs.message(MSG_Q3).data(**DOMAIN)
+        q1, lats, lons = grbs.message(m1).data(**DOMAIN)
+        q3, _, _ = grbs.message(m3).data(**DOMAIN)
     finally:
         grbs.close()
     return q1, q3, lats, lons
@@ -204,7 +210,7 @@ def worker(job: dict) -> int:
     with tempfile.TemporaryDirectory() as td:
         grib = Path(td) / f"{fff:03d}.grib2"
         download(job["url"], grib)
-        q1, q3, lats, lons = read_quartiles(grib)
+        q1, q3, lats, lons = read_quartiles(grib, job["var"])
     plot_frame(q1, q3, lats, lons, job["label"], job["run"], fff, Path(job["out"]))
     return fff
 
@@ -232,7 +238,8 @@ def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--out", default="dist", help="output directory (default: dist)")
     ap.add_argument("--run", help="run as YYYYMMDDHH (default: newest complete run)")
-    ap.add_argument("--product", nargs="+", default=["SPRATE"], choices=list(PRODUCTS))
+    ap.add_argument("--product", nargs="+", default=list(PRODUCTS), choices=list(PRODUCTS),
+                    help="default: all products")
     ap.add_argument("--workers", type=int, default=4)
     ap.add_argument("--inspect", metavar="GRIB2", help="print messages in a file and exit")
     args = ap.parse_args()
@@ -250,7 +257,7 @@ def main() -> None:
 
     for var in args.product:
         label = PRODUCTS[var]
-        jobs = [dict(fff=h, run=run, label=label, url=url_for(run, var, h),
+        jobs = [dict(fff=h, run=run, var=var, label=label, url=url_for(run, var, h),
                      out=str(out / "img" / var / f"f{h:03d}.png")) for h in HOURS]
         done = []
         with ProcessPoolExecutor(max_workers=args.workers) as ex:
@@ -261,8 +268,9 @@ def main() -> None:
                     print(f"  {var} T+{futs[f]:03d} done")
                 except Exception as e:  # keep going; a missing hour just leaves a gap
                     print(f"  {var} T+{futs[f]:03d} FAILED: {e}", file=sys.stderr)
-        if not done:
-            sys.exit(f"No frames produced for {var}.")
+        if not done:  # skip this product rather than sinking the whole deploy
+            print(f"WARNING: no frames produced for {var}; skipping it.", file=sys.stderr)
+            continue
         manifest["products"][var] = {
             "label": label,
             "frames": [
@@ -272,6 +280,8 @@ def main() -> None:
             ],
         }
 
+    if not manifest["products"]:
+        sys.exit("No products produced any frames.")
     (out / "data").mkdir(parents=True, exist_ok=True)
     (out / "data" / "manifest.json").write_text(json.dumps(manifest, indent=1))
     print("Wrote manifest.")
