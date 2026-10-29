@@ -1,0 +1,62 @@
+name: Build GEPS QCD site
+
+on:
+  schedule:
+    # GEPS 00Z / 12Z runs are fully out on the datamart roughly 6-7 h after init.
+    # Cron is UTC. If a run isn't complete yet, generate.py falls back to the previous one.
+    - cron: "30 7 * * *"
+    - cron: "30 19 * * *"
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      # Natural Earth 10m shapefiles are downloaded by cartopy on first use; cache them.
+      - uses: actions/cache@v4
+        with:
+          path: ~/.local/share/cartopy
+          key: cartopy-natural-earth-v1
+
+      - run: pip install -r requirements.txt
+
+      - name: Generate QCD maps
+        run: python generate.py --out dist
+
+      - name: Add static site files
+        run: |
+          cp -r web/. dist/
+          touch dist/.nojekyll
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
