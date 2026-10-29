@@ -179,7 +179,8 @@ def plot_frame(q1, q3, lats, lons, label: str, run: str, fff: int, out: Path) ->
     ax.add_feature(ne("cultural", "admin_0_countries", facecolor="none"), edgecolor="black", zorder=11)
     ax.add_feature(ne("cultural", "admin_1_states_provinces_lines", facecolor="none"), edgecolor="darkgray", zorder=11)
 
-    mesh = ax.contourf(lons, lats, qcd, levels=np.linspace(0, 1, 101), cmap=CMAP, zorder=10)
+    # mesh = ax.contourf(lons, lats, qcd, levels=np.linspace(0, 1, 101), cmap=CMAP, zorder=10)
+    mesh = ax.pcolormesh(lons, lats, qcd, cmap=CMAP, vmin=0, vmax=1, shading="nearest", transform=ccrs.PlateCarree(), zorder=10)
 
     cax = fig.add_axes([0.915, 0.10, 0.014, 0.65])
     cbar = fig.colorbar(mesh, cax=cax, ticks=np.linspace(0, 1, 11))
