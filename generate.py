@@ -203,7 +203,7 @@ def plot_frame(q1, q3, lats, lons, label: str, run: str, fff: int, out: Path) ->
 
     out.parent.mkdir(parents=True, exist_ok=True)
     tmp = out.with_suffix(".tmp.png")
-    fig.savefig(tmp, bbox_inches="tight", pad_inches=0.1))
+    fig.savefig(tmp, bbox_inches="tight", pad_inches=0.1)
     plt.close(fig)  # the notebook never freed figures; matters across 32 frames
 
     # Palette-quantize: ~3-4x smaller PNGs, no visible change for flat map colours
