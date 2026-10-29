@@ -58,7 +58,7 @@ MSGS = {
 }
 
 DOMAIN = dict(lat1=40, lat2=70, lon1=-85.5, lon2=-38.5)
-MIN_Q3 = 0.0  # mask points where Q3 <= this (raise it to hide noisy near-zero amounts)
+MIN_Q3 = 0.1  # mask points where Q3 <= this (raise it to hide noisy near-zero amounts)
 
 CITIES = {
     "Halifax": (-63.5728, 44.6476),
@@ -183,6 +183,12 @@ def plot_frame(q1, q3, lats, lons, label: str, run: str, fff: int, out: Path) ->
     cbar.ax.tick_params(labelsize=20)
     cbar.set_label(f"QCD 12h {label} Accumulation", fontsize=20, labelpad=30)
 
+    # --- 2. ADD AGREEMENT & DISAGREEMENT LABELS ---
+    cbar.ax.text(1.8, 0.0, "High Agreement\n(Low Spread)", transform=cbar.ax.transAxes, 
+                 fontsize=18, va="center", ha="left", fontweight="semibold")
+    cbar.ax.text(1.8, 1.0, "High Disagreement\n(High Spread)", transform=cbar.ax.transAxes, 
+                 fontsize=18, va="center", ha="left", fontweight="semibold")
+
     for name, (lon, lat) in CITIES.items():
         ax.text(lon, lat, name, color="k", fontsize=22, ha="center", va="center",
                 transform=ccrs.PlateCarree(), zorder=12,
@@ -193,11 +199,11 @@ def plot_frame(q1, q3, lats, lons, label: str, run: str, fff: int, out: Path) ->
         f"Init {init:%H}Z - {init:%d %b %Y}\nHour T+{fff}\nValid {valid:%H}Z - {valid:%d %b %Y}",
         loc="right", fontsize=20, fontweight="bold",
     )
-    fig.text(0.70, 0.005, "Plot Made by: Rob Lambert (ECCC)", fontsize=22, ha="center")
+    fig.text(0.70, 0.005, "Plot Made by: Rob Lambert", fontsize=22, ha="center")
 
     out.parent.mkdir(parents=True, exist_ok=True)
     tmp = out.with_suffix(".tmp.png")
-    fig.savefig(tmp)
+    fig.savefig(tmp, bbox_inches="tight", pad_inches=0.1))
     plt.close(fig)  # the notebook never freed figures; matters across 32 frames
 
     # Palette-quantize: ~3-4x smaller PNGs, no visible change for flat map colours
