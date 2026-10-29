@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GEPS QCD</title>
+<style>
+  :root { --bg:#f6f8fa; --fg:#1b1f24; --muted:#59636e; --card:#fff; --line:#d0d7de; --accent:#0969da; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#0d1117; --fg:#e6edf3; --muted:#8d96a0; --card:#161b22; --line:#30363d; --accent:#4493f8; }
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.5 system-ui,sans-serif; }
+  main { max-width:1200px; margin:0 auto; padding:16px; }
+  h1 { font-size:1.3rem; margin:0 0 2px; }
+  .sub { color:var(--muted); margin:0 0 12px; }
+  .bar { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:10px; }
+  button, select { font:inherit; padding:6px 12px; border:1px solid var(--line); background:var(--card); color:var(--fg); border-radius:6px; cursor:pointer; }
+  button:hover { border-color:var(--accent); }
+  input[type=range] { flex:1; min-width:160px; accent-color:var(--accent); }
+  #valid { font-variant-numeric:tabular-nums; color:var(--muted); }
+  .frame { background:var(--card); border:1px solid var(--line); border-radius:8px; overflow:hidden; }
+  .frame img { display:block; width:100%; height:auto; }
+  details { margin-top:14px; color:var(--muted); }
+  #err { color:#cf222e; }
+</style>
+</head>
+<body>
+<main>
+  <h1>CMC GEPS &ndash; Quartile Coefficient of Dispersion</h1>
+  <p class="sub" id="run">Loading&hellip;</p>
+  <p id="err"></p>
+
+  <div class="bar">
+    <select id="product" aria-label="Product"></select>
+    <button id="prev" title="Left arrow">&larr;</button>
+    <button id="play">Play</button>
+    <button id="next" title="Right arrow">&rarr;</button>
+    <input id="slider" type="range" min="0" value="0">
+    <span id="valid"></span>
+  </div>
+
+  <div class="frame"><img id="img" alt="GEPS QCD map"></div>
+
+  <details>
+    <summary>How to read this</summary>
+    <p>QCD = (Q3 &minus; Q1) / (Q3 + Q1) of the 12 h accumulation across the GEPS members.
+    Values near 0 mean the ensemble is tightly clustered (high agreement); values near 1 mean a wide
+    spread relative to the amounts (low confidence). Areas with no forecast accumulation are left blank.</p>
+  </details>
+</main>
+
+<script>
+(async () => {
+  const $ = id => document.getElementById(id);
+  let m;
+  try {
+    m = await (await fetch("data/manifest.json?" + Date.now())).json();
+  } catch (e) { $("err").textContent = "Couldn't load data/manifest.json."; return; }
+
+  const init = new Date(m.run.slice(0,4) + "-" + m.run.slice(4,6) + "-" + m.run.slice(6,8) + "T" + m.run.slice(8,10) + ":00:00Z");
+  $("run").textContent = "Run: " + init.toUTCString().replace(":00:00 GMT", "Z") +
+                         "  ·  built " + new Date(m.generated).toLocaleString();
+
+  const sel = $("product");
+  for (const [k, v] of Object.entries(m.products)) sel.add(new Option(v.label, k));
+  if (sel.options.length < 2) sel.style.display = "none";
+
+  let frames = [], i = 0, timer = null;
+
+  function load() {
+    frames = m.products[sel.value].frames;
+    $("slider").max = frames.length - 1;
+    i = Math.min(i, frames.length - 1);
+    frames.forEach(f => { new Image().src = f.file; });  // preload
+    show();
+  }
+  function show() {
+    const f = frames[i];
+    $("img").src = f.file;
+    $("slider").value = i;
+    $("valid").textContent = "T+" + f.hour + " h · valid " + f.valid.replace("T", " ");
+  }
+  const step = d => { i = (i + d + frames.length) % frames.length; show(); };
+  function stop() { clearInterval(timer); timer = null; $("play").textContent = "Play"; }
+
+  $("prev").onclick = () => { stop(); step(-1); };
+  $("next").onclick = () => { stop(); step(1); };
+  $("slider").oninput = e => { stop(); i = +e.target.value; show(); };
+  $("play").onclick = () => {
+    if (timer) return stop();
+    $("play").textContent = "Pause";
+    timer = setInterval(() => step(1), 700);
+  };
+  sel.onchange = () => { stop(); i = 0; load(); };
+  addEventListener("keydown", e => {
+    if (e.key === "ArrowLeft") { stop(); step(-1); }
+    if (e.key === "ArrowRight") { stop(); step(1); }
+  });
+  load();
+})();
+</script>
+</body>
+</html>
