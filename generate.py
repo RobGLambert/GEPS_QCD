@@ -187,9 +187,9 @@ def plot_frame(q1, q3, lats, lons, label: str, run: str, fff: int, out: Path) ->
     cbar.set_label(f"QCD 12h {label} Accumulation", fontsize=20, labelpad=30)
 
     # --- 2. ADD AGREEMENT & DISAGREEMENT LABELS ---
-    cbar.ax.text(0.5, -0.02, "High Agreement\n(Low Spread)", transform=cbar.ax.transAxes, 
+    cbar.ax.text(0.5, -0.08, "High Agreement\n(Low Spread)", transform=cbar.ax.transAxes, 
                  fontsize=18, va="center", ha="left", fontweight="bold")
-    cbar.ax.text(0.5, 1.02, "High Disagreement\n(High Spread)", transform=cbar.ax.transAxes, 
+    cbar.ax.text(0.5, 1.08, "High Disagreement\n(High Spread)", transform=cbar.ax.transAxes, 
                  fontsize=18, va="center", ha="left", fontweight="bold")
 
     for name, (lon, lat) in CITIES.items():
