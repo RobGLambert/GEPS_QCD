@@ -32,6 +32,8 @@ import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
 from matplotlib.colors import LinearSegmentedColormap  # noqa: E402
 
+import matplotlib.patheffects as pe # For Median Contour
+
 # ----------------------------------------------------------------------------
 # Config
 # ----------------------------------------------------------------------------
