@@ -38,7 +38,7 @@ import matplotlib.patheffects as pe # For Median Contour
 # Config
 # ----------------------------------------------------------------------------
 URL = (
-    "https://dd.weather.gc.ca/{day}/ensemble/geps/grib2/products/{hh}/{fff:03d}/"
+    "https://dd.weather.gc.ca/{day}/WXO-DD/ensemble/geps/grib2/products/{hh}/{fff:03d}/"
     "CMC_geps-prob_{var}-Accum-12h_SFC_0_latlon0p5x0p5_{run}_P{fff:03d}_all-products.grib2"
 )
 HOURS = range(12, 385, 12)
@@ -112,11 +112,7 @@ MED_SMOOTH_PASSES = 2   # 0 = raw field, 1 = light 3x3 smoothing, 2 = heavier. R
 # ----------------------------------------------------------------------------
 def url_for(run: str, var: str, fff: int) -> str:
     run_date = dt.datetime.strptime(run, "%Y%m%d%H")
-    today = dt.datetime.now(dt.timezone.utc).date()
-    delta = (today - run_date.date()).days
-    if delta not in (0, 1):
-        sys.exit(f"Run {run} is not on the datamart's today/yesterday directories.")
-    day = "today" if delta == 0 else "yesterday"
+    day = run_date.strftime("%Y%m%d")
     return URL.format(day=day, hh=run[8:], fff=fff, var=var, run=run)
 
 
